@@ -1,22 +1,31 @@
+import {buildWGLProgram} from "./buildWGLProgram";
+
+
 export class WebGLCanvas extends HTMLCanvasElement {
 
     constructor() {
-        const canvas = super();
+        super();
 
-        canvas.width = 300;
-        canvas.height = 300;
+        this.build();
+    }
 
-        const gl = canvas.getContext('webgl2');
+    async build() {
+        this.width = 300;
+        this.height = 300;
+
+        const gl = this.getContext('webgl2');
         this.gl = gl;
 
         if (!gl) {
             throw 'WebGL2 unavailable for this browser or browser-version'
         }
 
-        const vertexShader = this.createShader(gl.VERTEX_SHADER, require('./vertex.glsl'));
-        const fragmentShader = this.createShader(gl.FRAGMENT_SHADER, require('./fragment.glsl'));
-
-        const program = this.createProgram(vertexShader, fragmentShader);
+        let program;
+        try {
+            program = await buildWGLProgram(gl, require('./vertex.glsl'), require('./fragment.glsl'))
+        } catch (e) {
+            console.error(e);
+        }
         const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
 
         const positionBuffer = gl.createBuffer();
@@ -63,7 +72,6 @@ export class WebGLCanvas extends HTMLCanvasElement {
             const count = 3;
             gl.drawArrays(primitiveType, offset, count);
         }
-
     }
 
     createShader(type , source) {
