@@ -2,8 +2,10 @@
 
 precision highp float;
 
-out vec4 outColor;
+uniform vec2 u_resolution;
+
+out vec4 color;
 
 void main() {
-    outColor = vec4(1, 0, 0.5, 1);
+    color = vec4(gl_FragCoord.x / u_resolution.x, gl_FragCoord.y / u_resolution.y, 0, 1.0);
 }
