@@ -5,6 +5,11 @@ export class WebGLCanvas extends HTMLCanvasElement {
     constructor() {
         super();
 
+        this.gl = this.getContext('webgl2');
+        if (!this.gl) {
+            throw 'WebGL2 ctx unavailable!';
+        }
+
         window.addEventListener('resize', () => {
             this.resize();
         })
@@ -21,63 +26,63 @@ export class WebGLCanvas extends HTMLCanvasElement {
     }
 
     async build() {
-        const gl = this.getContext('webgl2');
-        if (!gl) {
-            throw 'WebGL2 unavailable for this browser or browser-version'
-        }
-        this.gl = gl;
-
-        this.resize();
-
+        const gl = this.gl;
         let program;
+
         try {
-            program = await buildWGLProgram(gl, require('./vertex.glsl'), require('./fragment.glsl'))
-            console.log(gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS))
+            this.resize();
+
+            await this.clear();
+            program = await buildWGLProgram(gl, require('./vertex.glsl'), require('./fragment.glsl'));
+
+            await this.vertex(program);
         } catch (e) {
             console.error(e);
         }
-        const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
 
-        const positionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-        {
-            const positions = [
-                -1, -1,
-                -1, 1,
-                1, 1,
-                1, -1,
-            ];
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-        }
-
-        const vao = gl.createVertexArray();
-        gl.bindVertexArray(vao);
-        gl.enableVertexAttribArray(positionAttributeLocation);
-
-        {
-            const size = 2;          // 2 components per iteration
-            const type = gl.FLOAT;   // the data is 32bit floats
-            const normalize = false; // don't normalize the data
-            const stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-            const offset = 0;        // start at the beginning of the buffer
-            gl.vertexAttribPointer(
-                positionAttributeLocation,
-                size, type, normalize, stride, offset
-            );
-        }
-
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(program);
-        gl.bindVertexArray(vao);
 
         {
             const primitiveType = gl.TRIANGLES;
             const offset = 0;
-            const count = 3;
+            const count = 6;
             gl.drawArrays(primitiveType, offset, count);
         }
+    }
+
+    async vertex(program) {
+        const positions = new Float32Array([
+            // first Triangle
+            -1, -1, 0,
+            -1, 1, 0,
+            1, 1, 0,
+            // second Triangle
+            1, 1, 0,
+            1, -1, 0,
+            -1, -1, 0,
+        ]);
+
+        const buffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW);
+
+        const location = this.gl.getAttribLocation(program, 'position');
+        this.gl.enableVertexAttribArray(location);
+        {
+            const size = 3;
+            const type = this.gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+            this.gl.vertexAttribPointer(location, size, type, normalize, stride, offset);
+        }
+
+        return Promise.resolve();
+    }
+
+    async clear() {
+        this.gl.clearColor(0, 0, 0, 1);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
 }
