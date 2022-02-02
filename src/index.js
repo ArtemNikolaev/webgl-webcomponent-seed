@@ -1,28 +1,38 @@
 import {buildWGLProgram} from "./buildWGLProgram";
 
-
 export class WebGLCanvas extends HTMLCanvasElement {
 
     constructor() {
         super();
 
+        window.addEventListener('resize', () => {
+            this.resize();
+        })
+
         this.build();
     }
 
+    resize() {
+        if (this.height === this.offsetHeight && this.width === this.offsetWidth) return;
+
+        this.height = this.offsetHeight;
+        this.width = this.offsetWidth;
+        this.gl.viewport(0, 0, this.offsetWidth, this.offsetHeight);
+    }
+
     async build() {
-        this.width = 300;
-        this.height = 300;
-
         const gl = this.getContext('webgl2');
-        this.gl = gl;
-
         if (!gl) {
             throw 'WebGL2 unavailable for this browser or browser-version'
         }
+        this.gl = gl;
+
+        this.resize();
 
         let program;
         try {
             program = await buildWGLProgram(gl, require('./vertex.glsl'), require('./fragment.glsl'))
+            console.log(gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS))
         } catch (e) {
             console.error(e);
         }
@@ -57,9 +67,6 @@ export class WebGLCanvas extends HTMLCanvasElement {
             );
         }
 
-        // this.resizeCanvasToDisplaySize();
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -72,47 +79,5 @@ export class WebGLCanvas extends HTMLCanvasElement {
             const count = 3;
             gl.drawArrays(primitiveType, offset, count);
         }
-    }
-
-    createShader(type , source) {
-        const shader = this.gl.createShader(type);
-        this.gl.shaderSource(shader, source);
-        this.gl.compileShader(shader);
-
-        const success = this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS);
-        if (success) {
-            return shader;
-        }
-
-        console.log(this.gl.getShaderInfoLog(shader));
-        this.gl.deleteShader(shader);
-    }
-
-    createProgram(vertexShader, fragmentShader) {
-        const gl = this.gl;
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-
-        const success = gl.getProgramParameter(program, gl.LINK_STATUS);
-        if (success) {
-            return program;
-        }
-
-        console.log(gl.getProgramInfoLog(program));
-        gl.deleteProgram(program);
-    }
-
-    resizeCanvasToDisplaySize(multiplier = 1) {
-        const canvas = this.gl.canvas;
-        const width  = canvas.clientWidth  * multiplier | 0;
-        const height = canvas.clientHeight * multiplier | 0;
-        if (canvas.width !== width ||  canvas.height !== height) {
-            canvas.width  = width;
-            canvas.height = height;
-            return true;
-        }
-        return false;
     }
 }
